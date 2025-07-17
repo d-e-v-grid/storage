@@ -142,13 +142,6 @@ type StorageConfigType = {
   rateLimiterRedisCommandTimeout: number
   uploadSignedUrlExpirationTime: number
   defaultMetricsEnabled: boolean
-  s3ProtocolEnabled: boolean
-  s3ProtocolPrefix: string
-  s3ProtocolAllowForwardedHeader: boolean
-  s3ProtocolEnforceRegion: boolean
-  s3ProtocolAccessKeyId?: string
-  s3ProtocolAccessKeySecret?: string
-  s3ProtocolNonCanonicalHostHeader?: string
   tracingEnabled?: boolean
   tracingMode?: string
   tracingTimeMinDuration: number
@@ -259,17 +252,6 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
       ) || '60'
     ),
 
-    // S3 Protocol
-    s3ProtocolEnabled: getOptionalConfigFromEnv('S3_PROTOCOL_ENABLED') !== 'false',
-    s3ProtocolPrefix: getOptionalConfigFromEnv('S3_PROTOCOL_PREFIX') || '',
-    s3ProtocolAllowForwardedHeader:
-      getOptionalConfigFromEnv('S3_ALLOW_FORWARDED_HEADER') === 'true',
-    s3ProtocolEnforceRegion: getOptionalConfigFromEnv('S3_PROTOCOL_ENFORCE_REGION') === 'true',
-    s3ProtocolAccessKeyId: getOptionalConfigFromEnv('S3_PROTOCOL_ACCESS_KEY_ID'),
-    s3ProtocolAccessKeySecret: getOptionalConfigFromEnv('S3_PROTOCOL_ACCESS_KEY_SECRET'),
-    s3ProtocolNonCanonicalHostHeader: getOptionalConfigFromEnv(
-      'S3_PROTOCOL_NON_CANONICAL_HOST_HEADER'
-    ),
     // Storage
     storageBackendType: getOptionalConfigFromEnv('STORAGE_BACKEND') as StorageBackendType,
 

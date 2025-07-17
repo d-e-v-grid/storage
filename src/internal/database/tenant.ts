@@ -7,9 +7,6 @@ export interface Features {
     enabled: boolean
     maxResolution?: number
   }
-  s3Protocol: {
-    enabled: boolean
-  }
   purgeCache: {
     enabled: boolean
   }
@@ -22,7 +19,6 @@ const {
   dbMigrationFreezeAt,
   uploadFileSizeLimit,
   imageTransformationEnabled,
-  s3ProtocolEnabled,
 } = getConfig()
 
 const singleTenantServiceKey = {
@@ -116,9 +112,6 @@ export async function getFeatures(tenantId: string): Promise<Features> {
     imageTransformation: {
       enabled: imageTransformationEnabled,
     },
-    s3Protocol: {
-      enabled: s3ProtocolEnabled,
-    },
     purgeCache: {
       enabled: true, // always enabled in single tenant
     },
@@ -190,30 +183,3 @@ export const jwksManager = {
   },
 }
 
-export const s3CredentialsManager = {
-  async getS3CredentialsTenantConfig(tenantId: string) {
-    return []
-  },
-  async addS3Credentials(tenantId: string, credentials: any) {
-    return { id: 'single-tenant-s3-creds' }
-  },
-  async deleteS3Credentials(tenantId: string, id: string) {
-    return true
-  },
-  async createS3Credentials(tenantId: string, credentials: any) {
-    return {
-      id: 'single-tenant-s3-creds',
-      access_key: 'single-tenant-access-key',
-      secret_key: 'single-tenant-secret-key',
-    }
-  },
-  async listS3Credentials(tenantId: string) {
-    return []
-  },
-  async deleteS3Credential(tenantId: string, id: string) {
-    return true
-  },
-  async listenForTenantUpdate() {
-    // No-op in single tenant mode
-  },
-}

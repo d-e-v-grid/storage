@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-The Supabase Storage Engine is a scalable, lightweight object storage service that provides multi-protocol support for file storage operations. This codebase implements a storage API that integrates with PostgreSQL for metadata storage and supports various storage backends including S3-compatible services.
+The Supabase Storage Engine is a scalable, lightweight object storage service that provides multi-protocol support for file storage operations. This codebase implements a storage API that integrates with PostgreSQL for metadata storage and supports various storage backends.
 
 ## Architecture
 
@@ -10,9 +10,6 @@ The Supabase Storage Engine is a scalable, lightweight object storage service th
 
 1. **Multi-Protocol Support**
    - HTTP/REST API for standard file operations
-   - TUS (Transloadit Upload Server) for resumable uploads
-   - S3-compatible API for AWS S3 client compatibility
-   - Iceberg REST Catalog for data lake functionality
 
 2. **Database Integration**
    - Uses PostgreSQL as the primary datastore for metadata
@@ -20,7 +17,6 @@ The Supabase Storage Engine is a scalable, lightweight object storage service th
    - Single-tenant architecture for simplified deployment
 
 3. **Storage Backends**
-   - Integrates with S3-compatible storage services
    - Supports multiple storage adapters through a flexible backend system
 
 ## Project Structure
@@ -34,9 +30,7 @@ The Supabase Storage Engine is a scalable, lightweight object storage service th
 │   ├── routes/         # API route implementations
 │   │   ├── admin/      # Admin-specific routes
 │   │   ├── bucket/     # Bucket management
-│   │   ├── object/     # Object operations
-│   │   ├── s3/         # S3-compatible API
-│   │   └── tus/        # TUS protocol implementation
+│   │   └── object/     # Object operations
 │   └── plugins/        # Fastify plugins
 ├── storage/            # Core storage functionality
 │   ├── backend/        # Storage backend adapters
@@ -104,9 +98,6 @@ The Supabase Storage Engine is a scalable, lightweight object storage service th
 - `DELETE /object/:bucket/*` - Delete an object
 - `POST /object/move` - Move/rename an object
 - `POST /object/copy` - Copy an object
-
-### S3-Compatible API
-The service implements a subset of the S3 API for compatibility with existing S3 clients.
 
 ### Admin Operations
 Admin endpoints are available under `/admin/*` for system operations.
