@@ -56,7 +56,6 @@ The Supabase Storage Engine is a scalable, lightweight object storage service th
 - Public and private file access
 - Signed URLs for temporary access
 - Image transformation and rendering
-- CDN integration with cache purging
 
 ### Database Schema
 - Single-tenant architecture for simplified deployment
