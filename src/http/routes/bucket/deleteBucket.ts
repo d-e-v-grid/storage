@@ -52,7 +52,7 @@ export default async function routes(fastify: FastifyInstance) {
     },
     async (request, response) => {
       const { bucketId } = request.params
-      await request.storage.deleteBucket(bucketId, request.query.type)
+      await request.storage.deleteBucket(bucketId)
 
       return response.status(200).send(createResponse('Successfully deleted'))
     }

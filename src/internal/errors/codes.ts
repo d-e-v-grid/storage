@@ -40,8 +40,6 @@ export enum ErrorCode {
   AbortedTerminate = 'AbortedTerminate',
   FeatureNotEnabled = 'FeatureNotEnabled',
   NotSupported = 'NotSupported',
-  IcebergError = 'IcebergError',
-  IcebergMaximumResourceLimit = 'IcebergMaximumResourceLimit',
   NoSuchCatalog = 'NoSuchCatalog',
 }
 
@@ -52,13 +50,6 @@ export const ERRORS = {
       resource: bucket,
       httpStatusCode: 409,
       message: `The bucket you tried to delete is not empty`,
-      originalError: e,
-    }),
-  IcebergMaximumResourceLimit: (limit: number, e?: Error) =>
-    new StorageBackendError({
-      code: ErrorCode.IcebergMaximumResourceLimit,
-      httpStatusCode: 409,
-      message: `The maximum number of this resource ${limit} is reached`,
       originalError: e,
     }),
 

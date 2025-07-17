@@ -1,1 +1,0 @@
-ALTER TABLE tenants ADD COLUMN IF NOT EXISTS disable_events text[] NULL;

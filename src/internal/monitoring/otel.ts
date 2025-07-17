@@ -1,13 +1,8 @@
 import { getConfig } from '../../config'
 
-const {
-  version,
-  requestTraceHeader,
-  isMultitenant,
-  requestXForwardedHostRegExp,
-  tenantId: defaultTenantId,
-  region,
-} = getConfig()
+const { version, requestTraceHeader, region } = getConfig()
+
+const DEFAULT_TENANT_ID = 'storage-single-tenant'
 
 import { S3Client } from '@aws-sdk/client-s3'
 import { NodeSDK } from '@opentelemetry/sdk-node'
@@ -96,22 +91,8 @@ if (tracingEnabled && spanProcessors.length > 0) {
           return ignoreRoutes.some((url) => req.url?.includes(url)) ?? false
         },
         startIncomingSpanHook: (req) => {
-          let tenantId = ''
-          if (isMultitenant) {
-            if (requestXForwardedHostRegExp) {
-              const serverRequest = req
-              const xForwardedHost = serverRequest.headers['x-forwarded-host']
-              if (typeof xForwardedHost !== 'string') return {}
-              const result = xForwardedHost.match(requestXForwardedHostRegExp)
-              if (!result) return {}
-              tenantId = result[1]
-            }
-          } else {
-            tenantId = defaultTenantId
-          }
-
           return {
-            'tenant.ref': tenantId,
+            'tenant.ref': DEFAULT_TENANT_ID,
             region,
           }
         },

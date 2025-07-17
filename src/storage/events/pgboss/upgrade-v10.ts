@@ -1,7 +1,9 @@
 import { BaseEvent } from '../base-event'
 import { Job, Queue as PgBossQueue, SendOptions, WorkOptions } from 'pg-boss'
 import { BasePayload, Queue } from '@internal/queue'
-import { multitenantKnex } from '@internal/database'
+import { getServiceKeyUser } from '@internal/database'
+import { Knex } from 'knex'
+import { getKnexInstance } from '@internal/database/connection'
 import { logger, logSchema } from '@internal/monitoring'
 
 type UpgradePgBossV10Payload = BasePayload
@@ -34,7 +36,14 @@ export class UpgradePgBossV10 extends BaseEvent<UpgradePgBossV10Payload> {
   }
 
   static async handle(job: Job<UpgradePgBossV10Payload>) {
-    await multitenantKnex.transaction(async (tnx) => {
+    // Get connection for single tenant
+    const serviceKey = await getServiceKeyUser('single-tenant')
+    const knexClient = await getKnexInstance({
+      searchPath: 'pgboss,pgboss_v10,public',
+      serviceKey: serviceKey.jwt,
+    })
+
+    await knexClient.transaction(async (tnx) => {
       const resultLock = await tnx.raw('SELECT pg_try_advisory_xact_lock(-5525285245963000606)')
       const lockAcquired = resultLock.rows.shift()?.pg_try_advisory_xact_lock || false
 
@@ -91,7 +100,7 @@ export class UpgradePgBossV10 extends BaseEvent<UpgradePgBossV10Payload> {
             ON CONFLICT DO NOTHING
         `
 
-          await multitenantKnex.raw(sql)
+          await knexClient.raw(sql)
         } catch (error) {
           logSchema.error(logger, '[PgBoss] Error while copying jobs', {
             type: 'pgboss',
@@ -100,5 +109,7 @@ export class UpgradePgBossV10 extends BaseEvent<UpgradePgBossV10Payload> {
         }
       }
     })
+
+    await knexClient.destroy()
   }
 }

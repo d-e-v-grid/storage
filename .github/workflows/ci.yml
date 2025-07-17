@@ -66,7 +66,6 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1/postgres
           FILE_SIZE_LIMIT: '52428800'
           STORAGE_BACKEND: s3
-          MULTITENANT_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5433/postgres
           ADMIN_API_KEYS: apikey
           ENABLE_IMAGE_TRANSFORMATION: true
           IMGPROXY_URL: http://127.0.0.1:50020
@@ -88,13 +87,3 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Ensure OrioleDB migration compatibility
-        run: |
-          npm run infra:restart:oriole
-        env:
-          PGRST_JWT_SECRET: ${{ secrets.PGRST_JWT_SECRET }}
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1/postgres
-          DB_INSTALL_ROLES: true
-          ENABLE_DEFAULT_METRICS: false
-          PG_QUEUE_ENABLE: false
-          MULTI_TENANT: false

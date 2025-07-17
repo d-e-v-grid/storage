@@ -3,7 +3,6 @@ import { FromSchema } from 'json-schema-to-ts'
 import { createDefaultSchema } from '../../routes-helper'
 import { AuthenticatedRequest } from '../../types'
 import { ROUTE_OPERATIONS } from '../operations'
-import { BucketType } from '@aws-sdk/client-s3'
 
 const createBucketBodySchema = {
   type: 'object',
@@ -11,7 +10,6 @@ const createBucketBodySchema = {
     name: { type: 'string', examples: ['avatars'] },
     id: { type: 'string', examples: ['avatars'] },
     public: { type: 'boolean', examples: [false] },
-    type: { type: 'string', enum: ['STANDARD', 'ANALYTICS'] },
     file_size_limit: {
       anyOf: [
         { type: 'integer', examples: [1000], nullable: true, minimum: 0 },
@@ -67,12 +65,10 @@ export default async function routes(fastify: FastifyInstance) {
         id,
         allowed_mime_types,
         file_size_limit,
-        type,
       } = request.body
 
       await request.storage.createBucket({
         id: id || bucketName,
-        type,
         name: bucketName,
         owner,
         public: isPublic ?? false,

@@ -35,6 +35,8 @@ import { FastifyInstance } from 'fastify'
 
 const { serviceKeyAsync, anonKeyAsync, tenantId, jwtSecret } = getConfig()
 
+console.log("tenantId", tenantId)
+
 describe('CDN Cache Manager', () => {
   const storageHook = useStorage()
   let appInstance: FastifyInstance
@@ -121,7 +123,7 @@ describe('CDN Cache Manager', () => {
     expect(body).toEqual({ message: 'success' })
     expect(spy).toBeCalledWith('/purge', {
       tenant: {
-        ref: tenantId,
+        ref: "storage-single-tenant",
       },
       bucketId: bucketName,
       objectName: objectName,

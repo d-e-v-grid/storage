@@ -3,10 +3,7 @@ import { FromSchema } from 'json-schema-to-ts'
 import { AuthenticatedRequest } from '../../types'
 import { ROUTE_OPERATIONS } from '../operations'
 import { getConfig } from '../../../config'
-import { getTenantConfig } from '@internal/database'
 import { DBMigration } from '@internal/database/migrations'
-
-const { isMultitenant } = getConfig()
 
 const searchRequestParamsSchema = {
   type: 'object',
@@ -47,15 +44,6 @@ export default async function routes(fastify: FastifyInstance) {
       },
     },
     async (request, response) => {
-      if (isMultitenant) {
-        const { migrationVersion } = await getTenantConfig(request.tenantId)
-        if (migrationVersion && DBMigration[migrationVersion] < DBMigration['search-v2']) {
-          return response.status(400).send({
-            message: 'This feature is not available for your tenant',
-          })
-        }
-      }
-
       const { bucketName } = request.params
       const { limit, with_delimiter, cursor, prefix } = request.body
 

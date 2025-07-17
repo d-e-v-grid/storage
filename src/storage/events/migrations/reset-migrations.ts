@@ -47,14 +47,10 @@ export class ResetMigrationsOnTenant extends BaseEvent<ResetMigrationsPayload> {
       project: tenantId,
     })
 
-    const reset = await resetMigration({
-      tenantId: tenantId,
-      markCompletedTillMigration: job.data.markCompletedTillMigration,
-      untilMigration: job.data.untilMigration,
-      databaseUrl: tenant.databaseUrl,
-    })
+    const reset = await resetMigration(tenantId)
 
-    if (reset) {
+    // Always run migrations after reset in single tenant mode
+    {
       await RunMigrationsOnTenants.send({
         tenantId: tenantId,
         tenant: {

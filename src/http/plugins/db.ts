@@ -1,5 +1,5 @@
 import fastifyPlugin from 'fastify-plugin'
-import { getConfig, MultitenantMigrationStrategy } from '../../config'
+import { getConfig } from '../../config'
 import {
   getServiceKeyUser,
   getTenantConfig,
@@ -7,15 +7,7 @@ import {
   getPostgresConnection,
 } from '@internal/database'
 import { logSchema } from '@internal/monitoring'
-import { createMutexByKey } from '@internal/concurrency'
-import {
-  areMigrationsUpToDate,
-  DBMigration,
-  lastLocalMigrationName,
-  progressiveMigrations,
-  runMigrationsOnTenant,
-  updateTenantMigrationsState,
-} from '@internal/database/migrations'
+import { DBMigration, lastLocalMigrationName } from '@internal/database/migrations'
 import { ERRORS } from '@internal/errors'
 
 declare module 'fastify' {
@@ -24,8 +16,6 @@ declare module 'fastify' {
     latestMigration?: keyof typeof DBMigration
   }
 }
-
-const { dbMigrationStrategy, isMultitenant, dbMigrationFreezeAt } = getConfig()
 
 export const db = fastifyPlugin(
   async function db(fastify) {
@@ -159,71 +149,13 @@ export const dbSuperUser = fastifyPlugin<DbSuperUserPluginOptions>(
 )
 
 /**
- * Handle database migration for multitenant applications when a request is made
+ * Handle database migration for single tenant applications
  */
 export const migrations = fastifyPlugin(
   async function migrations(fastify) {
     fastify.addHook('preHandler', async (req) => {
-      if (isMultitenant) {
-        const { migrationVersion } = await getTenantConfig(req.tenantId)
-        req.latestMigration = migrationVersion
-        return
-      }
-
       req.latestMigration = await lastLocalMigrationName()
     })
-
-    if (dbMigrationStrategy === MultitenantMigrationStrategy.ON_REQUEST) {
-      const migrationsMutex = createMutexByKey<void>()
-
-      fastify.addHook('preHandler', async (request) => {
-        // migrations are handled via async migrations
-        if (!isMultitenant) {
-          return
-        }
-
-        const tenant = await getTenantConfig(request.tenantId)
-        const migrationsUpToDate = await areMigrationsUpToDate(request.tenantId)
-
-        if (tenant.syncMigrationsDone || migrationsUpToDate) {
-          return
-        }
-
-        await migrationsMutex(request.tenantId, async () => {
-          const tenant = await getTenantConfig(request.tenantId)
-
-          if (tenant.syncMigrationsDone) {
-            return
-          }
-
-          await runMigrationsOnTenant({
-            databaseUrl: tenant.databaseUrl,
-            tenantId: request.tenantId,
-            upToMigration: dbMigrationFreezeAt,
-          })
-          await updateTenantMigrationsState(request.tenantId)
-          tenant.syncMigrationsDone = true
-        })
-      })
-    }
-
-    if (dbMigrationStrategy === MultitenantMigrationStrategy.PROGRESSIVE) {
-      fastify.addHook('preHandler', async (request) => {
-        if (!isMultitenant) {
-          return
-        }
-
-        const tenant = await getTenantConfig(request.tenantId)
-        const migrationsUpToDate = await areMigrationsUpToDate(request.tenantId)
-
-        // migrations are up to date
-        if (tenant.syncMigrationsDone || migrationsUpToDate) {
-          return
-        }
-
-        progressiveMigrations.addTenant(request.tenantId)
-      })
-    }
   },
   { name: 'db-migrations' }
 )

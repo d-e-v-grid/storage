@@ -1,16 +1,9 @@
 import { getConfig } from '../config'
-import {
-  getFileSizeLimit as getFileSizeLimitForTenant,
-  getFeatures,
-} from '../internal/database/tenant'
 import { ERRORS } from '../internal/errors'
 
-const { isMultitenant, imageTransformationEnabled, icebergBucketDetectionSuffix } = getConfig()
+const { imageTransformationEnabled } = getConfig()
 
-export type BucketType = 'STANDARD' | 'ANALYTICS'
-
-export const ICEBERG_BUCKET_RESERVED_SUFFIX = icebergBucketDetectionSuffix
-export const RESERVED_BUCKET_SUFFIXES = [icebergBucketDetectionSuffix]
+export const RESERVED_BUCKET_SUFFIXES: string[] = []
 
 /**
  * Get the maximum file size for a specific project
@@ -21,10 +14,7 @@ export async function getFileSizeLimit(
   tenantId: string,
   maxUpperLimit?: number | null
 ): Promise<number> {
-  let { uploadFileSizeLimit } = getConfig()
-  if (isMultitenant) {
-    uploadFileSizeLimit = await getFileSizeLimitForTenant(tenantId)
-  }
+  const { uploadFileSizeLimit } = getConfig()
 
   if (maxUpperLimit) {
     return Math.min(uploadFileSizeLimit, maxUpperLimit)
@@ -38,13 +28,7 @@ export async function getFileSizeLimit(
  * @param tenantId
  */
 export async function isImageTransformationEnabled(tenantId: string) {
-  if (!isMultitenant) {
-    return imageTransformationEnabled
-  }
-
-  const { imageTransformation } = await getFeatures(tenantId)
-
-  return imageTransformation.enabled
+  return imageTransformationEnabled
 }
 
 /**

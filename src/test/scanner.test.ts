@@ -4,7 +4,7 @@ import { eachParallel } from '@internal/testing/generators/array'
 import { getConfig } from '../config'
 import { randomUUID } from 'crypto'
 
-const { storageS3Bucket, tenantId } = getConfig()
+const { storageS3Bucket } = getConfig()
 
 describe('ObjectScanner', () => {
   const storage = useStorage()
@@ -47,7 +47,7 @@ describe('ObjectScanner', () => {
     const s3ToDelete = result.slice(5, 5 + numToDelete)
     await storage.adapter.deleteObjects(
       storageS3Bucket,
-      s3ToDelete.map((o) => `${tenantId}/${bucket.id}/${o.name}/${o.version}`)
+      s3ToDelete.map((o) => `storage-single-tenant/${bucket.id}/${o.name}/${o.version}`)
     )
 
     const objectsAfterDel = await storage.database.listObjects(bucket.id, 'name', 10000)
@@ -100,7 +100,7 @@ describe('ObjectScanner', () => {
         },
       })
 
-      return { name: upload.obj.name }
+      return { name: upload.obj.name, version: upload.obj.version }
     })
 
     const numToDelete = 10
@@ -135,7 +135,7 @@ describe('ObjectScanner', () => {
 
     while (true) {
       const s3Objects = await storage.adapter.list(storageS3Bucket, {
-        prefix: `${tenantId}/${bucket.id}`,
+        prefix: `storage-single-tenant/${bucket.id}`,
         nextToken: nextToken,
       })
       s3ObjectAll.push(...s3Objects.keys)
@@ -148,11 +148,13 @@ describe('ObjectScanner', () => {
     // Check s3 files are deleted
     expect(s3ObjectAll).toHaveLength(maxUploads - numToDelete)
     // Compare the keys names
-    expect(s3ObjectAll.length).not.toContain(objectsToDelete.map((o) => `${bucket.id}/${o.name}`))
+    expect(s3ObjectAll.map((o) => o.name)).not.toEqual(
+      expect.arrayContaining(objectsToDelete.map((o) => `${bucket.id}/${o.name}`))
+    )
 
     // Check files are backed-up
     const backupFiles = await storage.adapter.list(storageS3Bucket, {
-      prefix: `__internal/${tenantId}/${bucket.id}`,
+      prefix: `__internal/storage-single-tenant/${bucket.id}`,
     })
 
     expect(backupFiles.keys).toHaveLength(numToDelete)

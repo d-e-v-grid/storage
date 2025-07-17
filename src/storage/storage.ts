@@ -3,7 +3,6 @@ import { Database, FindBucketFilters, ListBucketOptions } from './database'
 import { ERRORS } from '@internal/errors'
 import { AssetRenderer, HeadRenderer, ImageRenderer } from './renderer'
 import {
-  BucketType,
   getFileSizeLimit,
   mustBeNotReservedBucketName,
   mustBeValidBucketName,
@@ -15,8 +14,6 @@ import { InfoRenderer } from '@storage/renderer/info'
 import { logger, logSchema } from '@internal/monitoring'
 import { StorageObjectLocator } from '@storage/locator'
 import { BucketCreatedEvent, BucketDeleted } from '@storage/events'
-import { tenantHasMigrations } from '@internal/database/migrations'
-import { tenantHasFeature } from '@internal/database'
 
 const { requestUrlLengthLimit } = getConfig()
 
@@ -99,7 +96,6 @@ export class Storage {
     > & {
       fileSizeLimit?: number | string | null
       allowedMimeTypes?: null | string[]
-      type?: BucketType
     }
   ) {
     // prevent creation with leading or trailing whitespace
@@ -109,21 +105,6 @@ export class Storage {
 
     mustBeValidBucketName(data.name)
     mustBeNotReservedBucketName(data.name)
-
-    if (data.type === 'ANALYTICS') {
-      if (
-        !(await tenantHasMigrations(this.db.tenantId, 'iceberg-catalog-flag-on-buckets')) ||
-        !(await tenantHasFeature(this.db.tenantId, 'icebergCatalog'))
-      ) {
-        throw ERRORS.FeatureNotEnabled(
-          'iceberg_catalog',
-          'Iceberg buckets are not enabled for this tenant'
-        )
-      }
-
-      const icebergBucketData = data as Parameters<Database['createIcebergBucket']>[0]
-      return this.createIcebergBucket(icebergBucketData)
-    }
 
     const bucketData: Parameters<Database['createBucket']>[0] = data
 
@@ -141,23 +122,6 @@ export class Storage {
     bucketData.allowed_mime_types = data.allowedMimeTypes
 
     return this.db.createBucket(bucketData)
-  }
-
-  async createIcebergBucket(data: Parameters<Database['createIcebergBucket']>[0]) {
-    return this.db.withTransaction(async (db) => {
-      const result = await db.createIcebergBucket(data)
-
-      await BucketCreatedEvent.invoke({
-        bucketId: result.id,
-        type: 'ANALYTICS',
-        tenant: {
-          ref: db.tenantId,
-          host: db.tenantHost,
-        },
-      })
-
-      return result
-    })
   }
 
   /**
@@ -206,13 +170,8 @@ export class Storage {
   /**
    * Delete a specific bucket if empty
    * @param id
-   * @param type
    */
-  async deleteBucket(id: string, type: BucketType = 'STANDARD') {
-    if (type === 'ANALYTICS') {
-      return this.deleteIcebergBucket(id)
-    }
-
+  async deleteBucket(id: string) {
     return this.db.withTransaction(async (db) => {
       await db.asSuperUser().findBucketById(id, 'id', {
         forUpdate: true,
@@ -230,32 +189,6 @@ export class Storage {
         throw ERRORS.NoSuchBucket(id)
       }
 
-      return deleted
-    })
-  }
-
-  async deleteIcebergBucket(id: string) {
-    if (
-      !(await tenantHasMigrations(this.db.tenantId, 'iceberg-catalog-flag-on-buckets')) ||
-      !(await tenantHasFeature(this.db.tenantId, 'icebergCatalog'))
-    ) {
-      throw ERRORS.FeatureNotEnabled(
-        'iceberg_catalog',
-        'Iceberg buckets are not enabled for this tenant'
-      )
-    }
-
-    return this.db.withTransaction(async (db) => {
-      const deleted = await db.deleteAnalyticsBucket(id)
-
-      await BucketDeleted.invoke({
-        bucketId: id,
-        type: 'ANALYTICS',
-        tenant: {
-          ref: db.tenantId,
-          host: db.tenantHost,
-        },
-      })
       return deleted
     })
   }

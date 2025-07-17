@@ -8,7 +8,7 @@ interface buildOpts extends FastifyServerOptions {
   exposeDocs?: boolean
 }
 
-const { version, keepAliveTimeout, headersTimeout, isMultitenant } = getConfig()
+const { version, keepAliveTimeout, headersTimeout } = getConfig()
 
 const build = (opts: buildOpts = {}): FastifyInstance => {
   const app = fastify(opts)
@@ -52,7 +52,7 @@ const build = (opts: buildOpts = {}): FastifyInstance => {
 
   app.register(plugins.signals)
   app.register(plugins.tenantId)
-  app.register(plugins.metrics({ enabledEndpoint: !isMultitenant }))
+  app.register(plugins.metrics({ enabledEndpoint: true }))
   app.register(plugins.tracing)
   app.register(plugins.logRequest({ excludeUrls: ['/status', '/metrics', '/health'] }))
   app.register(routes.tus, { prefix: 'upload/resumable' })
@@ -62,7 +62,6 @@ const build = (opts: buildOpts = {}): FastifyInstance => {
   app.register(routes.s3, { prefix: 's3' })
   app.register(routes.cdn, { prefix: 'cdn' })
   app.register(routes.healthcheck, { prefix: 'health' })
-  app.register(routes.iceberg, { prefix: 'iceberg/v1' })
 
   setErrorHandler(app)
 

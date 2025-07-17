@@ -3,12 +3,6 @@ import type { DBMigration } from '@internal/database/migrations'
 import { SignJWT } from 'jose'
 
 export type StorageBackendType = 'file' | 's3'
-export type IcebergCatalogAuthType = 'sigv4' | 'token'
-export enum MultitenantMigrationStrategy {
-  PROGRESSIVE = 'progressive',
-  ON_REQUEST = 'on_request',
-  FULL_FLEET = 'full_fleet',
-}
 
 export interface JwksConfigKeyBase {
   kid?: string
@@ -69,12 +63,11 @@ type StorageConfigType = {
   storageS3ForcePathStyle?: boolean
   storageS3Region: string
   storageS3ClientTimeout: number
-  isMultitenant: boolean
+  tenantId: string
   jwtSecret: string
   jwtAlgorithm: string
   jwtCachingEnabled: boolean
   jwtJWKS?: JwksConfig
-  multitenantDatabaseUrl?: string
   dbAnonRole: string
   dbAuthenticatedRole: string
   dbServiceRole: string
@@ -82,7 +75,7 @@ type StorageConfigType = {
   dbRefreshMigrationHashesOnMismatch: boolean
   dbSuperUser: string
   dbSearchPath: string
-  dbMigrationStrategy: MultitenantMigrationStrategy
+  dbMigrationStrategy: string
   dbMigrationFreezeAt?: keyof typeof DBMigration
   dbPostgresVersion?: string
   databaseURL: string
@@ -99,9 +92,7 @@ type StorageConfigType = {
   anonKeyAsync: Promise<string>
   serviceKeyAsync: Promise<string>
   storageBackendType: StorageBackendType
-  tenantId: string
   requestUrlLengthLimit: number
-  requestXForwardedHostRegExp?: string
   requestAllowXForwardedPrefix?: boolean
   logLevel?: string
   logflareEnabled?: boolean
@@ -173,17 +164,6 @@ type StorageConfigType = {
   }
   cdnPurgeEndpointURL?: string
   cdnPurgeEndpointKey?: string
-
-  icebergWarehouse: string
-  icebergCatalogUrl: string
-  icebergCatalogAuthType: IcebergCatalogAuthType
-  icebergCatalogToken?: string
-  icebergMaxNamespaceCount: number
-  icebergMaxTableCount: number
-  icebergMaxCatalogsCount: number
-  icebergBucketDetectionSuffix: string
-  icebergBucketDetectionMode: 'BUCKET' | 'FULL_PATH'
-  icebergS3DeleteEnabled: boolean
 }
 
 function getOptionalConfigFromEnv(key: string, fallback?: string): string | undefined {
@@ -208,12 +188,6 @@ function getConfigFromEnv(key: string, fallbackEnv?: string): string {
   return value
 }
 
-function getOptionalIfMultitenantConfigFromEnv(key: string, fallback?: string): string | undefined {
-  return getOptionalConfigFromEnv('MULTI_TENANT', 'IS_MULTITENANT') === 'true'
-    ? getOptionalConfigFromEnv(key, fallback)
-    : getConfigFromEnv(key, fallback)
-}
-
 let config: StorageConfigType | undefined
 let envPaths = ['.env']
 
@@ -231,18 +205,10 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
   }
 
   envPaths.map((envPath) => dotenv.config({ path: envPath, override: false }))
-  const isMultitenant = getOptionalConfigFromEnv('MULTI_TENANT', 'IS_MULTITENANT') === 'true'
 
   config = {
     isProduction: process.env.NODE_ENV === 'production',
     exposeDocs: getOptionalConfigFromEnv('EXPOSE_DOCS') !== 'false',
-    isMultitenant,
-    // Tenant
-    tenantId: isMultitenant
-      ? ''
-      : getOptionalConfigFromEnv('PROJECT_REF') ||
-        getOptionalConfigFromEnv('TENANT_ID') ||
-        'storage-single-tenant',
 
     // Server
     region: getOptionalConfigFromEnv('SERVER_REGION', 'REGION') || 'not-specified',
@@ -254,14 +220,16 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     adminPort: Number(getOptionalConfigFromEnv('SERVER_ADMIN_PORT', 'ADMIN_PORT')) || 5001,
 
     // Request
-    requestXForwardedHostRegExp: getOptionalConfigFromEnv(
-      'REQUEST_X_FORWARDED_HOST_REGEXP',
-      'X_FORWARDED_HOST_REGEXP'
-    ),
     requestAllowXForwardedPrefix:
       getOptionalConfigFromEnv('REQUEST_ALLOW_X_FORWARDED_PATH') === 'true',
     requestUrlLengthLimit:
       Number(getOptionalConfigFromEnv('REQUEST_URL_LENGTH_LIMIT', 'URL_LENGTH_LIMIT')) || 7_500,
+
+    // Tenant
+    tenantId:
+      getOptionalConfigFromEnv('PROJECT_REF') ||
+      getOptionalConfigFromEnv('TENANT_ID') ||
+      'storage-single-tenant',
     requestTraceHeader: getOptionalConfigFromEnv('REQUEST_TRACE_HEADER', 'REQUEST_ID_HEADER'),
     requestEtagHeaders: getOptionalConfigFromEnv('REQUEST_ETAG_HEADERS')?.trim().split(',') || [
       'if-none-match',
@@ -276,7 +244,7 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     ),
 
     encryptionKey: getOptionalConfigFromEnv('AUTH_ENCRYPTION_KEY', 'ENCRYPTION_KEY') || '',
-    jwtSecret: getOptionalIfMultitenantConfigFromEnv('AUTH_JWT_SECRET', 'PGRST_JWT_SECRET') || '',
+    jwtSecret: getConfigFromEnv('AUTH_JWT_SECRET', 'PGRST_JWT_SECRET'),
     jwtAlgorithm: getOptionalConfigFromEnv('AUTH_JWT_ALGORITHM', 'PGRST_JWT_ALGORITHM') || 'HS256',
     jwtCachingEnabled: getOptionalConfigFromEnv('JWT_CACHING_ENABLED') === 'true',
 
@@ -363,12 +331,8 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     // Database - Connection
     dbSearchPath: getOptionalConfigFromEnv('DATABASE_SEARCH_PATH', 'DB_SEARCH_PATH') || '',
     dbPostgresVersion: getOptionalConfigFromEnv('DATABASE_POSTGRES_VERSION'),
-    multitenantDatabaseUrl: getOptionalConfigFromEnv(
-      'DATABASE_MULTITENANT_URL',
-      'MULTITENANT_DATABASE_URL'
-    ),
     databaseSSLRootCert: getOptionalConfigFromEnv('DATABASE_SSL_ROOT_CERT'),
-    databaseURL: getOptionalIfMultitenantConfigFromEnv('DATABASE_URL') || '',
+    databaseURL: getConfigFromEnv('DATABASE_URL'),
     databasePoolURL: getOptionalConfigFromEnv('DATABASE_POOL_URL') || '',
     databasePoolMode: getOptionalConfigFromEnv('DATABASE_POOL_MODE'),
     databaseMaxConnections: parseInt(
@@ -501,29 +465,10 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
       getOptionalConfigFromEnv('RATE_LIMITER_REDIS_COMMAND_TIMEOUT') || '2',
       10
     ),
-
-    icebergWarehouse: getOptionalConfigFromEnv('ICEBERG_WAREHOUSE') || '',
-    icebergCatalogUrl:
-      getOptionalConfigFromEnv('ICEBERG_CATALOG_URL') ||
-      `https://s3tables.ap-southeast-1.amazonaws.com/iceberg/v1`,
-
-    icebergBucketDetectionSuffix:
-      getOptionalConfigFromEnv('ICEBERG_BUCKET_DETECTION_SUFFIX') || `--table-s3`,
-    icebergBucketDetectionMode:
-      getOptionalConfigFromEnv('ICEBERG_BUCKET_DETECTION_MODE') || `BUCKET`,
-    icebergCatalogAuthType: getOptionalConfigFromEnv('ICEBERG_CATALOG_AUTH_TYPE') || `sigv4`,
-    icebergCatalogToken: getOptionalConfigFromEnv('ICEBERG_CATALOG_AUTH_TOKEN'),
-    icebergMaxCatalogsCount: parseInt(getOptionalConfigFromEnv('ICEBERG_MAX_CATALOGS') || '2', 10),
-    icebergMaxNamespaceCount: parseInt(
-      getOptionalConfigFromEnv('ICEBERG_MAX_NAMESPACES') || '25',
-      10
-    ),
-    icebergMaxTableCount: parseInt(getOptionalConfigFromEnv('ICEBERG_MAX_TABLES') || '10', 10),
-    icebergS3DeleteEnabled: getOptionalConfigFromEnv('ICEBERG_S3_DELETE_ENABLED') === 'true',
   } as StorageConfigType
 
   const serviceKey = getOptionalConfigFromEnv('SERVICE_KEY') || ''
-  if (!config.isMultitenant && !serviceKey) {
+  if (!serviceKey) {
     config.serviceKeyAsync = new SignJWT({ role: config.dbServiceRole })
       .setIssuedAt()
       .setExpirationTime('10y')
@@ -534,7 +479,7 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
   }
 
   const anonKey = getOptionalConfigFromEnv('ANON_KEY') || ''
-  if (!config.isMultitenant && !anonKey) {
+  if (!anonKey) {
     config.anonKeyAsync = new SignJWT({ role: config.dbAnonRole })
       .setIssuedAt()
       .setExpirationTime('10y')

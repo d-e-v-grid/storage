@@ -1,4 +1,4 @@
-import { Bucket, S3MultipartUpload, Obj, S3PartUpload, IcebergCatalog } from '../schemas'
+import { Bucket, S3MultipartUpload, Obj, S3PartUpload } from '../schemas'
 import { ObjectMetadata } from '../backend'
 import { TenantConnection } from '@internal/database'
 import { DBMigration } from '@internal/database/migrations'
@@ -76,8 +76,6 @@ export interface Database {
       'id' | 'name' | 'public' | 'owner' | 'file_size_limit' | 'allowed_mime_types'
     >
   ): Promise<Pick<Bucket, 'id'>>
-
-  createIcebergBucket(data: Pick<Bucket, 'id' | 'name'>): Promise<IcebergCatalog>
 
   findBucketById<Filters extends FindBucketFilters = FindObjectFilters>(
     bucketId: string,
@@ -212,6 +210,4 @@ export interface Database {
     uploadId: string,
     options: { afterPart?: string; maxParts: number }
   ): Promise<S3PartUpload[]>
-
-  deleteAnalyticsBucket(id: string): Promise<void>
 }

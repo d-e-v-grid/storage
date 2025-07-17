@@ -5,18 +5,14 @@ import { IncomingMessage, Server, ServerResponse } from 'node:http'
 import build from '../app'
 import buildAdmin from '../admin-app'
 import { getConfig } from '../config'
-import { listenForTenantUpdate, PubSub, TenantConnection } from '@internal/database'
+import { PubSub, TenantConnection } from '@internal/database'
 import { logger, logSchema } from '@internal/monitoring'
 import { Queue } from '@internal/queue'
 import { registerWorkers } from '@storage/events'
 import { AsyncAbortController } from '@internal/concurrency'
 
 import { bindShutdownSignals, createServerClosedPromise, shutdown } from './shutdown'
-import {
-  runMigrationsOnTenant,
-  runMultitenantMigrations,
-  startAsyncMigrations,
-} from '@internal/database/migrations'
+import { runMigrationsOnTenant } from '@internal/database/migrations'
 import { Cluster } from '@internal/cluster/cluster'
 
 const shutdownSignal = new AsyncAbortController()
@@ -47,18 +43,12 @@ main()
  * Start Storage API server
  */
 async function main() {
-  const { databaseURL, isMultitenant, pgQueueEnable, dbMigrationFreezeAt } = getConfig()
+  const { databaseURL, pgQueueEnable, dbMigrationFreezeAt } = getConfig()
 
   // Migrations
-  if (isMultitenant) {
-    await runMultitenantMigrations()
-    await listenForTenantUpdate(PubSub)
-  } else {
-    await runMigrationsOnTenant({
-      databaseUrl: databaseURL,
-      upToMigration: dbMigrationFreezeAt,
-    })
-  }
+  await runMigrationsOnTenant('storage-single-tenant', {
+    upToMigration: dbMigrationFreezeAt,
+  })
 
   // Queue
   if (pgQueueEnable) {
@@ -77,11 +67,6 @@ async function main() {
     signal: shutdownSignal.nextGroup.signal,
   })
 
-  // Start async migrations background process
-  if (isMultitenant && pgQueueEnable) {
-    startAsyncMigrations(shutdownSignal.nextGroup.signal)
-  }
-
   // PoolManager Monitoring
   TenantConnection.poolManager.monitor(shutdownSignal.nextGroup.signal)
 
@@ -93,18 +78,14 @@ async function main() {
       type: 'cluster',
       clusterSize: data.size,
     })
-    TenantConnection.poolManager.rebalanceAll({
-      clusterSize: data.size,
-    })
+    TenantConnection.poolManager.rebalanceAll()
   })
 
   // HTTP Server
   const app = await httpServer(shutdownSignal.signal)
 
   // HTTP Admin Server
-  if (isMultitenant) {
-    await httpAdminServer(app, shutdownSignal.signal)
-  }
+  await httpAdminServer(app, shutdownSignal.signal)
 }
 
 /**
@@ -163,14 +144,11 @@ async function httpAdminServer(
 ) {
   const { adminRequestIdHeader, adminPort, host } = getConfig()
 
-  const adminApp = buildAdmin(
-    {
-      logger,
-      disableRequestLogging: true,
-      requestIdHeader: adminRequestIdHeader,
-    },
-    app
-  )
+  const adminApp = buildAdmin({
+    logger,
+    disableRequestLogging: true,
+    requestIdHeader: adminRequestIdHeader,
+  })
 
   const closePromise = createServerClosedPromise(adminApp.server, () => {
     logSchema.info(logger, '[Admin Server] Exited', {

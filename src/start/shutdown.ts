@@ -1,6 +1,6 @@
 import { logger, logSchema } from '@internal/monitoring'
 import { AsyncAbortController } from '@internal/concurrency'
-import { multitenantKnex, TenantConnection } from '@internal/database'
+import { TenantConnection } from '@internal/database'
 import http from 'http'
 
 /**
@@ -47,14 +47,6 @@ export async function shutdown(serverSignal: AsyncAbortController) {
 
     await serverSignal.abortAsync().catch((e) => {
       logSchema.error(logger, 'Failed to abort server signal', {
-        type: 'shutdown',
-        error: e,
-      })
-      errors.push(e)
-    })
-
-    await multitenantKnex.destroy().catch((e) => {
-      logSchema.error(logger, 'Failed to close database connection', {
         type: 'shutdown',
         error: e,
       })

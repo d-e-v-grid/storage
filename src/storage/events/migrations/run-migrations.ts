@@ -58,15 +58,11 @@ export class RunMigrationsOnTenants extends BaseEvent<RunMigrationsPayload> {
         type: 'migrations',
         project: tenantId,
       })
-      await runMigrationsOnTenant({
-        databaseUrl: tenant.databaseUrl,
-        tenantId,
-        waitForLock: false,
+      await runMigrationsOnTenant(tenantId, {
         upToMigration: job.data.upToMigration,
       })
       await updateTenantMigrationsState(tenantId, {
-        migration: job.data.upToMigration,
-        state: TenantMigrationStatus.COMPLETED,
+        status: TenantMigrationStatus.COMPLETED,
       })
 
       logSchema.info(logger, `[Migrations] completed for tenant ${tenantId}`, {
@@ -89,9 +85,9 @@ export class RunMigrationsOnTenants extends BaseEvent<RunMigrationsPayload> {
       })
 
       if (job.retryCount === job.retryLimit) {
-        await updateTenantMigrationsState(tenantId, { state: TenantMigrationStatus.FAILED_STALE })
+        await updateTenantMigrationsState(tenantId, { status: TenantMigrationStatus.FAILED_STALE })
       } else {
-        await updateTenantMigrationsState(tenantId, { state: TenantMigrationStatus.FAILED })
+        await updateTenantMigrationsState(tenantId, { status: TenantMigrationStatus.FAILED })
       }
 
       try {

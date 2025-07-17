@@ -90,12 +90,12 @@ describe('Webhooks', () => {
               }),
               name: `public/${fileName}.png`,
               tenant: expect.objectContaining({
-                ref: 'bjhaohmqunupljrqypxz',
+                ref: 'storage-single-tenant',
               }),
             }),
           }),
           tenant: expect.objectContaining({
-            ref: 'bjhaohmqunupljrqypxz',
+            ref: 'storage-single-tenant',
           }),
         }),
       })
@@ -135,14 +135,14 @@ describe('Webhooks', () => {
               name: obj.name,
               tenant: {
                 host: undefined,
-                ref: 'bjhaohmqunupljrqypxz',
+                ref: 'storage-single-tenant',
               },
               reqId: expect.any(String),
             }),
           }),
           tenant: {
             host: undefined,
-            ref: 'bjhaohmqunupljrqypxz',
+            ref: 'storage-single-tenant',
           },
         }),
       })
@@ -189,14 +189,14 @@ describe('Webhooks', () => {
               version: expect.any(String),
               tenant: {
                 host: undefined,
-                ref: 'bjhaohmqunupljrqypxz',
+                ref: 'storage-single-tenant',
               },
               reqId: expect.any(String),
             }),
           }),
           tenant: {
             host: undefined,
-            ref: 'bjhaohmqunupljrqypxz',
+            ref: 'storage-single-tenant',
           },
         }),
       })
@@ -237,14 +237,14 @@ describe('Webhooks', () => {
               },
               tenant: {
                 host: undefined,
-                ref: 'bjhaohmqunupljrqypxz',
+                ref: 'storage-single-tenant',
               },
               reqId: expect.any(String),
             }),
           }),
           tenant: {
             host: undefined,
-            ref: 'bjhaohmqunupljrqypxz',
+            ref: 'storage-single-tenant',
           },
         }),
       })
@@ -298,13 +298,13 @@ describe('Webhooks', () => {
               name: `${obj.name}-copied`,
               tenant: {
                 host: undefined,
-                ref: 'bjhaohmqunupljrqypxz',
+                ref: 'storage-single-tenant',
               },
             }),
           }),
           tenant: {
             host: undefined,
-            ref: 'bjhaohmqunupljrqypxz',
+            ref: 'storage-single-tenant',
           },
         }),
       })

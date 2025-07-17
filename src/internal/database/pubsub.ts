@@ -2,10 +2,9 @@ import { PostgresPubSub } from '../pubsub'
 import { getConfig } from '../../config'
 import { logger } from '../monitoring'
 
-const { isMultitenant, databaseURL, multitenantDatabaseUrl } = getConfig()
+const { databaseURL } = getConfig()
 
-const connectionString = isMultitenant ? (multitenantDatabaseUrl as string) : databaseURL
-export const PubSub = new PostgresPubSub(connectionString)
+export const PubSub = new PostgresPubSub(databaseURL)
 
 PubSub.on('error', (err) => {
   logger.error('PubSub error', {

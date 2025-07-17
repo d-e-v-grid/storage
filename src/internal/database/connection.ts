@@ -3,41 +3,49 @@ import { Knex, knex } from 'knex'
 import retry from 'async-retry'
 import KnexTimeoutError = knex.KnexTimeoutError
 import { ERRORS } from '@internal/errors'
-import {
-  PoolStrategy,
-  PoolManager,
-  searchPath,
-  TenantConnectionOptions,
-} from '@internal/database/pool'
+import { PoolManager, searchPath, ConnectionOptions } from '@internal/database/pool'
 
 // https://github.com/knex/knex/issues/387#issuecomment-51554522
 pg.types.setTypeParser(20, 'text', parseInt)
+
+/**
+ * Get a Knex instance with custom configuration
+ * Useful for operations that need specific search paths or settings
+ */
+export async function getKnexInstance(options: {
+  searchPath?: string
+  serviceKey?: string
+}): Promise<Knex> {
+  const manager = new PoolManager()
+  const pool = manager.getPool()
+
+  // Set search path after getting the pool
+  if (options.searchPath) {
+    await pool.raw(`SET search_path TO ${options.searchPath}`)
+  }
+
+  return pool
+}
 
 export class TenantConnection {
   static poolManager = new PoolManager()
   public readonly role: string
 
-  constructor(
-    public readonly pool: PoolStrategy,
-    protected readonly options: TenantConnectionOptions
-  ) {
+  constructor(public readonly pool: Knex, protected readonly options: ConnectionOptions) {
     this.role = options.user.payload.role || 'anon'
   }
 
   static stop() {
-    return TenantConnection.poolManager.destroyAll()
+    return TenantConnection.poolManager.destroy()
   }
 
-  static async create(options: TenantConnectionOptions) {
-    const knexPool = TenantConnection.poolManager.getPool(options)
+  static async create(options: ConnectionOptions) {
+    const knexPool = TenantConnection.poolManager.getPool()
     return new this(knexPool, options)
   }
 
   dispose() {
-    if (this.options.isSingleUse && this.options.isExternalPool) {
-      return this.pool.destroy()
-    }
-
+    // No-op in single-tenant mode as we share a single pool
     return Promise.resolve()
   }
 
@@ -46,7 +54,7 @@ export class TenantConnection {
       const tnx = await retry(
         async (bail) => {
           try {
-            const pool = instance || this.pool.acquire()
+            const pool = instance || this.pool
             return await pool.transaction()
           } catch (e) {
             if (
@@ -73,23 +81,12 @@ export class TenantConnection {
         throw ERRORS.InternalError(undefined, 'Could not create transaction')
       }
 
-      if (!instance && this.options.isExternalPool) {
-        // Note: in knex there is a bug when using `knex.transaction()` which doesn't bubble up the error to the catch block
-        // in case the transaction was not able to be created. This is a workaround to make sure the error is thrown.
-        // Ref: https://github.com/knex/knex/issues/4709
-        if (tnx.isCompleted()) {
-          await tnx.executionPromise
-
-          // This should never be reached, since the above promise is always rejected in this edge case.
-          throw ERRORS.DatabaseError('Transaction already completed')
-        }
-
-        try {
-          await tnx.raw(`SELECT set_config('search_path', ?, true)`, [searchPath.join(', ')])
-        } catch (e) {
-          await tnx.rollback()
-          throw e
-        }
+      // Always set search path in single-tenant mode
+      try {
+        await tnx.raw(`SELECT set_config('search_path', ?, true)`, [searchPath.join(', ')])
+      } catch (e) {
+        await tnx.rollback()
+        throw e
       }
 
       return tnx

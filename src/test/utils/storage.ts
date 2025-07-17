@@ -11,7 +11,10 @@ import { isS3Error } from '@internal/errors'
 // import { CreateBucketCommand, HeadBucketCommand, S3Client } from '@aws-sdk/client-s3'
 // import { isS3Error } from '@internal/errors'
 
-const { tenantId, storageBackendType, storageS3Bucket } = getConfig()
+const { storageBackendType, storageS3Bucket } = getConfig()
+
+// Use fixed tenant ID for single-tenant mode
+const DEFAULT_TENANT_ID = 'storage-single-tenant'
 
 export function useStorage() {
   let connection: TenantConnection
@@ -23,16 +26,16 @@ export function useStorage() {
   let location: StorageObjectLocator
 
   beforeAll(async () => {
-    const adminUser = await getServiceKeyUser(tenantId)
+    const adminUser = await getServiceKeyUser(DEFAULT_TENANT_ID)
     connection = await getPostgresConnection({
-      tenantId,
+      tenantId: DEFAULT_TENANT_ID,
       user: adminUser,
       superUser: adminUser,
       host: 'localhost',
       disableHostCheck: true,
     })
     database = new StorageKnexDB(connection, {
-      tenantId,
+      tenantId: DEFAULT_TENANT_ID,
       host: 'localhost',
     })
     location = new TenantLocation(storageS3Bucket)

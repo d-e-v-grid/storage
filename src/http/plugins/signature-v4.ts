@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify'
 import fastifyPlugin from 'fastify-plugin'
-import { getJwtSecret, getTenantConfig, s3CredentialsManager } from '@internal/database'
+import { getJwtSecret, getTenantConfig } from '@internal/database'
 import { ClientSignature, SignatureV4 } from '@storage/protocols/s3'
 import { signJWT, verifyJWT } from '@internal/auth'
 import { ERRORS } from '@internal/errors'
@@ -16,7 +16,6 @@ const {
   anonKeyAsync,
   serviceKeyAsync,
   storageS3Region,
-  isMultitenant,
   requestAllowXForwardedPrefix,
   s3ProtocolPrefix,
   s3ProtocolAllowForwardedHeader,
@@ -97,15 +96,13 @@ export const signatureV4 = fastifyPlugin(
         return
       }
 
-      if (!claims) {
-        throw ERRORS.AccessDenied('Missing claims')
-      }
-
-      const jwt = await signJWT(claims, jwtSecret, '5m')
+      // For single-tenant mode, create a service role JWT
+      const serviceRole = { role: 'service_role', sub: request.tenantId }
+      const jwt = await signJWT(serviceRole, jwtSecret, '5m')
 
       request.jwt = jwt
-      request.jwtPayload = claims
-      request.owner = claims.sub
+      request.jwtPayload = serviceRole
+      request.owner = serviceRole.sub
 
       if (SignatureV4.isChunkedUpload(request.headers)) {
         request.streamingSignatureV4 = createStreamingSignatureV4Parser({
@@ -161,9 +158,7 @@ async function createServerSignature(tenantId: string, clientSignature: ClientSi
   const awsService = 's3'
 
   if (clientSignature?.sessionToken) {
-    const tenantAnonKey = isMultitenant
-      ? (await getTenantConfig(tenantId)).anonKey
-      : await anonKeyAsync
+    const tenantAnonKey = await anonKeyAsync
 
     if (!tenantAnonKey) {
       throw ERRORS.AccessDenied('Missing tenant anon key')
@@ -182,27 +177,6 @@ async function createServerSignature(tenantId: string, clientSignature: ClientSi
     })
 
     return { signature, claims: undefined, token: clientSignature.sessionToken }
-  }
-
-  if (isMultitenant) {
-    const credential = await s3CredentialsManager.getS3CredentialsByAccessKey(
-      tenantId,
-      clientSignature.credentials.accessKey
-    )
-
-    const signature = new SignatureV4({
-      enforceRegion: s3ProtocolEnforceRegion,
-      allowForwardedHeader: s3ProtocolAllowForwardedHeader,
-      nonCanonicalForwardedHost: s3ProtocolNonCanonicalHostHeader,
-      credentials: {
-        accessKey: credential.accessKey,
-        secretKey: credential.secretKey,
-        region: awsRegion,
-        service: awsService,
-      },
-    })
-
-    return { signature, claims: credential.claims, token: undefined }
   }
 
   if (!s3ProtocolAccessKeyId || !s3ProtocolAccessKeySecret) {

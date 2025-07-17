@@ -7,27 +7,19 @@ declare module 'fastify' {
   }
 }
 
-const {
-  version,
-  isMultitenant,
-  tenantId: defaultTenantId,
-  requestXForwardedHostRegExp,
-} = getConfig()
+const { version } = getConfig()
+
+// In single tenant mode, we use a fixed tenant ID
+const DEFAULT_TENANT_ID = 'storage-single-tenant'
 
 export const tenantId = fastifyPlugin(
   async (fastify) => {
-    fastify.decorateRequest('tenantId', defaultTenantId)
-    fastify.addHook('onRequest', async (request) => {
-      if (!isMultitenant || !requestXForwardedHostRegExp) return
-      const xForwardedHost = request.headers['x-forwarded-host']
-      if (typeof xForwardedHost !== 'string') return
-      const result = xForwardedHost.match(requestXForwardedHostRegExp)
-      if (!result) return
-
-      request.tenantId = result[1]
-    })
+    fastify.decorateRequest('tenantId', DEFAULT_TENANT_ID)
 
     fastify.addHook('onRequest', async (request, reply) => {
+      // Set tenant ID to fixed value in single tenant mode
+      request.tenantId = DEFAULT_TENANT_ID
+
       reply.log = request.log = request.log.child({
         tenantId: request.tenantId,
         project: request.tenantId,
@@ -41,14 +33,10 @@ export const tenantId = fastifyPlugin(
 
 export const adminTenantId = fastifyPlugin(
   async (fastify) => {
-    fastify.addHook('onRequest', async (request) => {
-      const tenantId = (request.params as Record<string, undefined | string>).tenantId
-      if (!tenantId) return
-
-      request.tenantId = tenantId
-    })
-
     fastify.addHook('onRequest', async (request, reply) => {
+      // In single tenant mode, always use the default tenant ID
+      request.tenantId = DEFAULT_TENANT_ID
+
       reply.log = request.log = request.log.child({
         tenantId: request.tenantId,
         project: request.tenantId,

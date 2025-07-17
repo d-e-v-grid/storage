@@ -1,6 +1,5 @@
 import fastifyPlugin from 'fastify-plugin'
 import { isIP } from 'net'
-import { getTenantConfig } from '@internal/database'
 
 import { getConfig } from '../../config'
 import { context, trace } from '@opentelemetry/api'
@@ -16,7 +15,6 @@ declare module 'fastify' {
 }
 
 const {
-  isMultitenant,
   tracingEnabled,
   tracingMode: defaultTracingMode,
   tracingReturnServerTimings,
@@ -35,12 +33,7 @@ export const tracing = fastifyPlugin(
 
     fastify.addHook('onRequest', async (request) => {
       try {
-        if (isMultitenant && request.tenantId) {
-          const tenantConfig = await getTenantConfig(request.tenantId)
-          request.tracingMode = tenantConfig.tracingMode
-        } else {
-          request.tracingMode = defaultTracingMode
-        }
+        request.tracingMode = defaultTracingMode
 
         if (!enableLogTraces) {
           return

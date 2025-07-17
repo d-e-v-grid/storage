@@ -1,1 +1,0 @@
-ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feature_s3_protocol boolean DEFAULT true NOT NULL;

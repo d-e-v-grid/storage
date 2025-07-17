@@ -59,7 +59,7 @@ export default async function routes(fastify: FastifyInstance) {
     async (request, response) => {
       const { limit, offset, sortColumn, sortOrder, search } = request.query
       const results = await request.storage.listBuckets(
-        'id, name, type, public, owner, created_at, updated_at, file_size_limit, allowed_mime_types',
+        'id, name, public, owner, created_at, updated_at, file_size_limit, allowed_mime_types',
         { limit, offset, sortColumn, sortOrder, search }
       )
 

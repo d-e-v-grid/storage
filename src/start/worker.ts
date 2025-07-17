@@ -1,6 +1,6 @@
 import { Queue } from '@internal/queue'
 import { logger, logSchema } from '@internal/monitoring'
-import { listenForTenantUpdate, PubSub } from '@internal/database'
+import { PubSub } from '@internal/database'
 import { AsyncAbortController } from '@internal/concurrency'
 import { registerWorkers } from '@storage/events'
 
@@ -38,8 +38,6 @@ export async function main() {
   const { requestTraceHeader, adminPort, host } = getConfig()
 
   logger.info('[Queue] Starting Queue Worker')
-
-  await listenForTenantUpdate(PubSub)
 
   await Promise.all([
     Queue.start({
