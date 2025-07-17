@@ -59,11 +59,4 @@ export const ROUTE_OPERATIONS = {
   S3_LIST_BUCKET: 'storage.s3.bucket.list',
   S3_GET_BUCKET_LOCATION: 'storage.s3.bucket.get_location',
   S3_GET_BUCKET_VERSIONING: 'storage.s3.bucket.get_versioning',
-
-  // Tus
-  TUS_CREATE_UPLOAD: 'storage.tus.upload.create',
-  TUS_UPLOAD_PART: 'storage.tus.upload.part',
-  TUS_GET_UPLOAD: 'storage.tus.upload.get',
-  TUS_DELETE_UPLOAD: 'storage.tus.upload.delete',
-  TUS_OPTIONS: 'storage.tus.options',
 }

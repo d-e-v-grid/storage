@@ -239,11 +239,9 @@ export abstract class StorageBackendAdapter {
   }
 }
 
-const { tusUseFileVersionSeparator } = getConfig()
-
 export const PATH_SEPARATOR = '/'
 export const FILE_VERSION_SEPARATOR = '-$v-'
-export const SEPARATOR = tusUseFileVersionSeparator ? FILE_VERSION_SEPARATOR : PATH_SEPARATOR
+export const SEPARATOR = PATH_SEPARATOR
 
 export function withOptionalVersion(key: string, version?: string): string {
   return version ? `${key}${SEPARATOR}${version}` : key

@@ -141,12 +141,6 @@ type StorageConfigType = {
   rateLimiterRedisConnectTimeout: number
   rateLimiterRedisCommandTimeout: number
   uploadSignedUrlExpirationTime: number
-  tusUrlExpiryMs: number
-  tusMaxConcurrentUploads: number
-  tusPath: string
-  tusPartSize: number
-  tusUseFileVersionSeparator: boolean
-  tusAllowS3Tags: boolean
   defaultMetricsEnabled: boolean
   s3ProtocolEnabled: boolean
   s3ProtocolPrefix: string
@@ -264,21 +258,6 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
         'SIGNED_UPLOAD_URL_EXPIRATION_TIME'
       ) || '60'
     ),
-
-    // Upload - TUS
-    tusPath: getOptionalConfigFromEnv('TUS_URL_PATH') || '/upload/resumable',
-    tusPartSize: parseInt(getOptionalConfigFromEnv('TUS_PART_SIZE') || '50', 10),
-    tusUrlExpiryMs: parseInt(
-      getOptionalConfigFromEnv('TUS_URL_EXPIRY_MS') || (1000 * 60 * 60).toString(),
-      10
-    ),
-    tusMaxConcurrentUploads: parseInt(
-      getOptionalConfigFromEnv('TUS_MAX_CONCURRENT_UPLOADS') || '500',
-      10
-    ),
-    tusUseFileVersionSeparator:
-      getOptionalConfigFromEnv('TUS_USE_FILE_VERSION_SEPARATOR') === 'true',
-    tusAllowS3Tags: getOptionalConfigFromEnv('TUS_ALLOW_S3_TAGS') !== 'false',
 
     // S3 Protocol
     s3ProtocolEnabled: getOptionalConfigFromEnv('S3_PROTOCOL_ENABLED') !== 'false',

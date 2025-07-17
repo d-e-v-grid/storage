@@ -24,10 +24,7 @@ import { Event as QueueBaseEvent } from '@internal/queue'
 import { S3Backend } from '@storage/backend'
 import { StorageKnexDB } from '@storage/database'
 import { TenantConnection } from '@internal/database'
-import { S3Store } from '@tus/s3-store'
 import { Upload } from '@aws-sdk/lib-storage'
-import { StreamSplitter } from '@tus/server'
-import { PgLock } from '@storage/protocols/tus'
 import { Semaphore, Permit } from '@shopify/semaphore'
 
 const tracingEnabled = process.env.TRACING_ENABLED === 'true'
@@ -209,46 +206,6 @@ if (tracingEnabled && spanProcessors.length > 0) {
         targetClass: TenantConnection,
         enabled: true,
         methodsToInstrument: ['transaction', 'setScope'],
-      }),
-      new ClassInstrumentation({
-        targetClass: S3Store,
-        enabled: true,
-        methodsToInstrument: [
-          'write',
-          'create',
-          'remove',
-          'getUpload',
-          'declareUploadLength',
-          'uploadIncompletePart',
-          'uploadPart',
-          'downloadIncompletePart',
-          'uploadParts',
-        ],
-        setName: (name) => 'Tus.' + name,
-      }),
-      new ClassInstrumentation({
-        targetClass: StreamSplitter,
-        enabled: true,
-        methodsToInstrument: ['emitEvent'],
-        setName: (name: string, attrs: any) => {
-          if (attrs.event) {
-            return name + '.' + attrs.event
-          }
-          return name
-        },
-        setAttributes: {
-          emitEvent: function (event) {
-            return {
-              part: this.part as any,
-              event,
-            }
-          },
-        },
-      }),
-      new ClassInstrumentation({
-        targetClass: PgLock,
-        enabled: true,
-        methodsToInstrument: ['lock', 'unlock', 'acquireLock'],
       }),
       new ClassInstrumentation({
         targetClass: Semaphore,

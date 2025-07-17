@@ -45,9 +45,6 @@
     "@opentelemetry/instrumentation-pg": "^0.44.0",
     "@shopify/semaphore": "^3.0.2",
     "@smithy/node-http-handler": "^2.3.1",
-    "@tus/file-store": "1.4.0",
-    "@tus/s3-store": "1.5.0",
-    "@tus/server": "1.7.0",
     "agentkeepalive": "^4.5.0",
     "ajv": "^8.12.0",
     "async-retry": "^1.3.3",
@@ -118,7 +115,6 @@
     "ts-jest": "^29.3.2",
     "ts-node-dev": "^1.1.8",
     "tsx": "^4.16.0",
-    "tus-js-client": "^3.1.0",
     "typescript": "5.2.2"
   },
   "bin": "./dist/server.js"

@@ -1,7 +1,6 @@
 export { default as bucket } from './bucket'
 export { default as object } from './object'
 export { default as render } from './render'
-export { default as tus } from './tus'
 export { default as healthcheck } from './health'
 export { default as s3 } from './s3'
 export { default as cdn } from './cdn'
