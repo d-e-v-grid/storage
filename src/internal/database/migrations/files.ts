@@ -7,10 +7,10 @@ const { dbMigrationFreezeAt } = getConfig()
 
 export const loadMigrationFilesCached = memoizePromise(loadMigrationFiles)
 
-export const localMigrationFiles = () => loadMigrationFiles('./migrations/tenant')
+export const localMigrationFiles = () => loadMigrationFiles('./migrations')
 
 export async function lastLocalMigrationName() {
-  const migrations = await loadMigrationFilesCached('./migrations/tenant')
+  const migrations = await loadMigrationFilesCached('./migrations')
 
   if (!dbMigrationFreezeAt) {
     return migrations[migrations.length - 1].name as keyof typeof DBMigration

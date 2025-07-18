@@ -151,6 +151,49 @@ type StorageConfigType = {
   }
 }
 
+/**
+ * Safely parses an integer with validation
+ */
+function parseIntSafe(
+  value: string | undefined,
+  defaultValue: number,
+  min?: number,
+  max?: number
+): number {
+  const parsed = parseInt(value || '', 10)
+  if (isNaN(parsed)) return defaultValue
+  if (min !== undefined && parsed < min) {
+    throw new Error(`Value ${parsed} is below minimum ${min}`)
+  }
+  if (max !== undefined && parsed > max) {
+    throw new Error(`Value ${parsed} is above maximum ${max}`)
+  }
+  return parsed
+}
+
+/**
+ * Validates that a URL has the correct format
+ */
+function validateUrl(url: string, allowedProtocols: string[] = ['http:', 'https:']): boolean {
+  try {
+    const parsedUrl = new URL(url)
+    return allowedProtocols.includes(parsedUrl.protocol)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Validates storage backend type
+ */
+function validateStorageBackendType(value: string | undefined): StorageBackendType {
+  const validTypes: StorageBackendType[] = ['file', 's3']
+  if (value && !validTypes.includes(value as StorageBackendType)) {
+    throw new Error(`Invalid STORAGE_BACKEND: ${value}. Must be one of: ${validTypes.join(', ')}`)
+  }
+  return (value || 'file') as StorageBackendType
+}
+
 function getOptionalConfigFromEnv(key: string, fallback?: string): string | undefined {
   const envValue = process.env[key]
 
@@ -198,8 +241,13 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     // Server
     region: getOptionalConfigFromEnv('SERVER_REGION', 'REGION') || 'not-specified',
     version: getOptionalConfigFromEnv('VERSION') || '0.0.0',
-    keepAliveTimeout: parseInt(getOptionalConfigFromEnv('SERVER_KEEP_ALIVE_TIMEOUT') || '61', 10),
-    headersTimeout: parseInt(getOptionalConfigFromEnv('SERVER_HEADERS_TIMEOUT') || '65', 10),
+    keepAliveTimeout: parseIntSafe(
+      getOptionalConfigFromEnv('SERVER_KEEP_ALIVE_TIMEOUT'),
+      61,
+      0,
+      300
+    ),
+    headersTimeout: parseIntSafe(getOptionalConfigFromEnv('SERVER_HEADERS_TIMEOUT'), 65, 0, 300),
     host: getOptionalConfigFromEnv('SERVER_HOST', 'HOST') || '0.0.0.0',
     port: Number(getOptionalConfigFromEnv('SERVER_PORT', 'PORT')) || 5000,
     adminPort: Number(getOptionalConfigFromEnv('SERVER_ADMIN_PORT', 'ADMIN_PORT')) || 5001,
@@ -219,7 +267,7 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     requestEtagHeaders: getOptionalConfigFromEnv('REQUEST_ETAG_HEADERS')?.trim().split(',') || [
       'if-none-match',
     ],
-    responseSMaxAge: parseInt(getOptionalConfigFromEnv('RESPONSE_S_MAXAGE') || '0', 10),
+    responseSMaxAge: parseIntSafe(getOptionalConfigFromEnv('RESPONSE_S_MAXAGE'), 0, 0),
 
     // Admin
     adminApiKeys: getOptionalConfigFromEnv('SERVER_ADMIN_API_KEYS', 'ADMIN_API_KEYS') || '',
@@ -228,8 +276,22 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
       'REQUEST_ADMIN_TRACE_HEADER'
     ),
 
-    encryptionKey: getOptionalConfigFromEnv('AUTH_ENCRYPTION_KEY', 'ENCRYPTION_KEY') || '',
-    jwtSecret: getConfigFromEnv('AUTH_JWT_SECRET', 'PGRST_JWT_SECRET'),
+    encryptionKey: (() => {
+      const key = getOptionalConfigFromEnv('AUTH_ENCRYPTION_KEY', 'ENCRYPTION_KEY')
+      const isProduction = process.env.NODE_ENV === 'production'
+      if (!key && isProduction) {
+        throw new Error('AUTH_ENCRYPTION_KEY is required in production')
+      }
+      return key || 'dev-only-encryption-key-change-in-production'
+    })(),
+    jwtSecret: (() => {
+      const secret = getConfigFromEnv('AUTH_JWT_SECRET', 'PGRST_JWT_SECRET')
+      const isProduction = process.env.NODE_ENV === 'production'
+      if (isProduction && secret.length < 32) {
+        throw new Error('JWT secret must be at least 32 characters in production')
+      }
+      return secret
+    })(),
     jwtAlgorithm: getOptionalConfigFromEnv('AUTH_JWT_ALGORITHM', 'PGRST_JWT_ALGORITHM') || 'HS256',
     jwtCachingEnabled: getOptionalConfigFromEnv('JWT_CACHING_ENABLED') === 'true',
 
@@ -237,21 +299,26 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     uploadFileSizeLimit: Number(
       getOptionalConfigFromEnv('UPLOAD_FILE_SIZE_LIMIT', 'FILE_SIZE_LIMIT')
     ),
-    uploadFileSizeLimitStandard: parseInt(
+    uploadFileSizeLimitStandard: parseIntSafe(
       getOptionalConfigFromEnv(
         'UPLOAD_FILE_SIZE_LIMIT_STANDARD',
         'FILE_SIZE_LIMIT_STANDARD_UPLOAD'
-      ) || '0'
+      ),
+      0,
+      0
     ),
-    uploadSignedUrlExpirationTime: parseInt(
+    uploadSignedUrlExpirationTime: parseIntSafe(
       getOptionalConfigFromEnv(
         'UPLOAD_SIGNED_URL_EXPIRATION_TIME',
         'SIGNED_UPLOAD_URL_EXPIRATION_TIME'
-      ) || '60'
+      ),
+      60,
+      1,
+      86400
     ),
 
     // Storage
-    storageBackendType: getOptionalConfigFromEnv('STORAGE_BACKEND') as StorageBackendType,
+    storageBackendType: validateStorageBackendType(getOptionalConfigFromEnv('STORAGE_BACKEND')),
 
     // Storage - File
     storageFilePath: getOptionalConfigFromEnv(
@@ -261,9 +328,11 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     storageFileEtagAlgorithm: getOptionalConfigFromEnv('STORAGE_FILE_ETAG_ALGORITHM') || 'md5',
 
     // Storage - S3
-    storageS3MaxSockets: parseInt(
-      getOptionalConfigFromEnv('STORAGE_S3_MAX_SOCKETS', 'GLOBAL_S3_MAX_SOCKETS') || '200',
-      10
+    storageS3MaxSockets: parseIntSafe(
+      getOptionalConfigFromEnv('STORAGE_S3_MAX_SOCKETS', 'GLOBAL_S3_MAX_SOCKETS'),
+      200,
+      1,
+      10000
     ),
     storageS3Bucket: getOptionalConfigFromEnv('STORAGE_S3_BUCKET', 'GLOBAL_S3_BUCKET'),
     storageS3Endpoint: getOptionalConfigFromEnv('STORAGE_S3_ENDPOINT', 'GLOBAL_S3_ENDPOINT'),
@@ -291,29 +360,38 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     dbSearchPath: getOptionalConfigFromEnv('DATABASE_SEARCH_PATH', 'DB_SEARCH_PATH') || '',
     dbPostgresVersion: getOptionalConfigFromEnv('DATABASE_POSTGRES_VERSION'),
     databaseSSLRootCert: getOptionalConfigFromEnv('DATABASE_SSL_ROOT_CERT'),
-    databaseURL: getConfigFromEnv('DATABASE_URL'),
+    databaseURL: (() => {
+      const url = getConfigFromEnv('DATABASE_URL')
+      if (!validateUrl(url, ['postgresql:', 'postgres:'])) {
+        throw new Error('DATABASE_URL must be a valid PostgreSQL URL')
+      }
+      return url
+    })(),
     databasePoolURL: getOptionalConfigFromEnv('DATABASE_POOL_URL') || '',
     databasePoolMode: getOptionalConfigFromEnv('DATABASE_POOL_MODE'),
-    databaseMaxConnections: parseInt(
-      getOptionalConfigFromEnv('DATABASE_MAX_CONNECTIONS') || '20',
-      10
+    databaseMaxConnections: parseIntSafe(
+      getOptionalConfigFromEnv('DATABASE_MAX_CONNECTIONS'),
+      20,
+      1,
+      100
     ),
-    databaseFreePoolAfterInactivity: parseInt(
-      getOptionalConfigFromEnv('DATABASE_FREE_POOL_AFTER_INACTIVITY') || (1000 * 60).toString(),
-      10
+    databaseFreePoolAfterInactivity: parseIntSafe(
+      getOptionalConfigFromEnv('DATABASE_FREE_POOL_AFTER_INACTIVITY'),
+      1000 * 60,
+      0
     ),
-    databaseConnectionTimeout: parseInt(
-      getOptionalConfigFromEnv('DATABASE_CONNECTION_TIMEOUT') || '3000',
-      10
+    databaseConnectionTimeout: parseIntSafe(
+      getOptionalConfigFromEnv('DATABASE_CONNECTION_TIMEOUT'),
+      3000,
+      0
     ),
-
 
     // Monitoring
     logLevel: getOptionalConfigFromEnv('LOG_LEVEL') || 'info',
     logflareEnabled: getOptionalConfigFromEnv('LOGFLARE_ENABLED') === 'true',
     logflareApiKey: getOptionalConfigFromEnv('LOGFLARE_API_KEY'),
     logflareSourceToken: getOptionalConfigFromEnv('LOGFLARE_SOURCE_TOKEN'),
-    logflareBatchSize: parseInt(getOptionalConfigFromEnv('LOGFLARE_BATCH_SIZE') || '200', 10),
+    logflareBatchSize: parseIntSafe(getOptionalConfigFromEnv('LOGFLARE_BATCH_SIZE'), 200, 1, 10000),
     defaultMetricsEnabled: !(
       getOptionalConfigFromEnv('DEFAULT_METRICS_ENABLED', 'ENABLE_DEFAULT_METRICS') === 'false'
     ),
@@ -334,71 +412,114 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     pgQueueReadWriteTimeout: Number(getOptionalConfigFromEnv('PG_QUEUE_READ_WRITE_TIMEOUT')) || 0,
     pgQueueMaxConnections: Number(getOptionalConfigFromEnv('PG_QUEUE_MAX_CONNECTIONS')) || 4,
     pgQueueConnectionURL: getOptionalConfigFromEnv('PG_QUEUE_CONNECTION_URL'),
-    pgQueueDeleteAfterDays: parseInt(
-      getOptionalConfigFromEnv('PG_QUEUE_DELETE_AFTER_DAYS') || '2',
-      10
+    pgQueueDeleteAfterDays: parseIntSafe(
+      getOptionalConfigFromEnv('PG_QUEUE_DELETE_AFTER_DAYS'),
+      2,
+      1,
+      365
     ),
     pgQueueDeleteAfterHours:
       Number(getOptionalConfigFromEnv('PG_QUEUE_DELETE_AFTER_HOURS')) || undefined,
-    pgQueueArchiveCompletedAfterSeconds: parseInt(
-      getOptionalConfigFromEnv('PG_QUEUE_ARCHIVE_COMPLETED_AFTER_SECONDS') || '7200',
-      10
+    pgQueueArchiveCompletedAfterSeconds: parseIntSafe(
+      getOptionalConfigFromEnv('PG_QUEUE_ARCHIVE_COMPLETED_AFTER_SECONDS'),
+      7200,
+      0
     ),
-    pgQueueRetentionDays: parseInt(getOptionalConfigFromEnv('PG_QUEUE_RETENTION_DAYS') || '2', 10),
-    pgQueueConcurrentTasksPerQueue: parseInt(
-      getOptionalConfigFromEnv('PG_QUEUE_CONCURRENT_TASKS_PER_QUEUE') || '50',
-      10
+    pgQueueRetentionDays: parseIntSafe(
+      getOptionalConfigFromEnv('PG_QUEUE_RETENTION_DAYS'),
+      2,
+      1,
+      365
+    ),
+    pgQueueConcurrentTasksPerQueue: parseIntSafe(
+      getOptionalConfigFromEnv('PG_QUEUE_CONCURRENT_TASKS_PER_QUEUE'),
+      50,
+      1,
+      1000
     ),
 
     // Webhooks
     webhookURL: getOptionalConfigFromEnv('WEBHOOK_URL'),
     webhookApiKey: getOptionalConfigFromEnv('WEBHOOK_API_KEY'),
-    webhookQueuePullInterval: parseInt(
-      getOptionalConfigFromEnv('WEBHOOK_QUEUE_PULL_INTERVAL') || '700'
+    webhookQueuePullInterval: parseIntSafe(
+      getOptionalConfigFromEnv('WEBHOOK_QUEUE_PULL_INTERVAL'),
+      700,
+      100,
+      10000
     ),
-    webhookQueueTeamSize: parseInt(getOptionalConfigFromEnv('QUEUE_WEBHOOKS_TEAM_SIZE') || '50'),
-    webhookQueueConcurrency: parseInt(getOptionalConfigFromEnv('QUEUE_WEBHOOK_CONCURRENCY') || '5'),
-    webhookMaxConnections: parseInt(
-      getOptionalConfigFromEnv('QUEUE_WEBHOOK_MAX_CONNECTIONS') || '500'
+    webhookQueueTeamSize: parseIntSafe(
+      getOptionalConfigFromEnv('QUEUE_WEBHOOKS_TEAM_SIZE'),
+      50,
+      1,
+      1000
     ),
-    webhookQueueMaxFreeSockets: parseInt(
-      getOptionalConfigFromEnv('QUEUE_WEBHOOK_MAX_FREE_SOCKETS') || '20'
+    webhookQueueConcurrency: parseIntSafe(
+      getOptionalConfigFromEnv('QUEUE_WEBHOOK_CONCURRENCY'),
+      5,
+      1,
+      100
     ),
-    adminDeleteQueueTeamSize: parseInt(
-      getOptionalConfigFromEnv('QUEUE_ADMIN_DELETE_TEAM_SIZE') || '50'
+    webhookMaxConnections: parseIntSafe(
+      getOptionalConfigFromEnv('QUEUE_WEBHOOK_MAX_CONNECTIONS'),
+      500,
+      1,
+      10000
     ),
-    adminDeleteConcurrency: parseInt(
-      getOptionalConfigFromEnv('QUEUE_ADMIN_DELETE_CONCURRENCY') || '5'
+    webhookQueueMaxFreeSockets: parseIntSafe(
+      getOptionalConfigFromEnv('QUEUE_WEBHOOK_MAX_FREE_SOCKETS'),
+      20,
+      1,
+      1000
+    ),
+    adminDeleteQueueTeamSize: parseIntSafe(
+      getOptionalConfigFromEnv('QUEUE_ADMIN_DELETE_TEAM_SIZE'),
+      50,
+      1,
+      1000
+    ),
+    adminDeleteConcurrency: parseIntSafe(
+      getOptionalConfigFromEnv('QUEUE_ADMIN_DELETE_CONCURRENCY'),
+      5,
+      1,
+      100
     ),
 
     // Image Transformation
     imageTransformationEnabled:
       getOptionalConfigFromEnv('IMAGE_TRANSFORMATION_ENABLED', 'ENABLE_IMAGE_TRANSFORMATION') ===
       'true',
-    imgProxyRequestTimeout: parseInt(
-      getOptionalConfigFromEnv('IMGPROXY_REQUEST_TIMEOUT') || '15',
-      10
+    imgProxyRequestTimeout: parseIntSafe(
+      getOptionalConfigFromEnv('IMGPROXY_REQUEST_TIMEOUT'),
+      15,
+      1,
+      300
     ),
-    imgProxyHttpMaxSockets: parseInt(
-      getOptionalConfigFromEnv('IMGPROXY_HTTP_MAX_SOCKETS') || '5000',
-      10
+    imgProxyHttpMaxSockets: parseIntSafe(
+      getOptionalConfigFromEnv('IMGPROXY_HTTP_MAX_SOCKETS'),
+      5000,
+      1,
+      50000
     ),
-    imgProxyHttpKeepAlive: parseInt(
-      getOptionalConfigFromEnv('IMGPROXY_HTTP_KEEP_ALIVE_TIMEOUT') || '61',
-      10
+    imgProxyHttpKeepAlive: parseIntSafe(
+      getOptionalConfigFromEnv('IMGPROXY_HTTP_KEEP_ALIVE_TIMEOUT'),
+      61,
+      0,
+      300
     ),
     imgProxyURL: getOptionalConfigFromEnv('IMGPROXY_URL'),
     imgLimits: {
       size: {
-        min: parseInt(
-          getOptionalConfigFromEnv('IMAGE_TRANSFORMATION_LIMIT_MIN_SIZE', 'IMG_LIMITS_MIN_SIZE') ||
-            '1',
-          10
+        min: parseIntSafe(
+          getOptionalConfigFromEnv('IMAGE_TRANSFORMATION_LIMIT_MIN_SIZE', 'IMG_LIMITS_MIN_SIZE'),
+          1,
+          1,
+          10000
         ),
-        max: parseInt(
-          getOptionalConfigFromEnv('IMAGE_TRANSFORMATION_LIMIT_MAX_SIZE', 'IMG_LIMITS_MAX_SIZE') ||
-            '2000',
-          10
+        max: parseIntSafe(
+          getOptionalConfigFromEnv('IMAGE_TRANSFORMATION_LIMIT_MAX_SIZE', 'IMG_LIMITS_MAX_SIZE'),
+          2000,
+          1,
+          50000
         ),
       },
     },
@@ -409,17 +530,23 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     rateLimiterSkipOnError: getOptionalConfigFromEnv('RATE_LIMITER_SKIP_ON_ERROR') === 'true',
     rateLimiterDriver: getOptionalConfigFromEnv('RATE_LIMITER_DRIVER') || 'memory',
     rateLimiterRedisUrl: getOptionalConfigFromEnv('RATE_LIMITER_REDIS_URL'),
-    rateLimiterRenderPathMaxReqSec: parseInt(
-      getOptionalConfigFromEnv('RATE_LIMITER_RENDER_PATH_MAX_REQ_SEC') || '5',
-      10
+    rateLimiterRenderPathMaxReqSec: parseIntSafe(
+      getOptionalConfigFromEnv('RATE_LIMITER_RENDER_PATH_MAX_REQ_SEC'),
+      5,
+      1,
+      1000
     ),
-    rateLimiterRedisConnectTimeout: parseInt(
-      getOptionalConfigFromEnv('RATE_LIMITER_REDIS_CONNECT_TIMEOUT') || '2',
-      10
+    rateLimiterRedisConnectTimeout: parseIntSafe(
+      getOptionalConfigFromEnv('RATE_LIMITER_REDIS_CONNECT_TIMEOUT'),
+      2,
+      1,
+      60
     ),
-    rateLimiterRedisCommandTimeout: parseInt(
-      getOptionalConfigFromEnv('RATE_LIMITER_REDIS_COMMAND_TIMEOUT') || '2',
-      10
+    rateLimiterRedisCommandTimeout: parseIntSafe(
+      getOptionalConfigFromEnv('RATE_LIMITER_REDIS_COMMAND_TIMEOUT'),
+      2,
+      1,
+      60
     ),
   } as StorageConfigType
 

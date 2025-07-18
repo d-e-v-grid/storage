@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 
 function main() {
-  const migrationsPath = path.join(__dirname, '..', '..', 'migrations', 'tenant', '*.sql')
+  const migrationsPath = path.join(__dirname, '..', '..', 'migrations', '*.sql')
   const files = glob.sync(migrationsPath).sort()
 
   const migrations = files.map((file, index) => {

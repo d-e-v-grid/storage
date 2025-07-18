@@ -96,7 +96,7 @@ export async function runMigrations(options?: {
 
   await connectAndMigrate({
     databaseUrl: databaseURL,
-    migrationsDirectory: './migrations/tenant',
+    migrationsDirectory: './migrations',
     ssl: getSslSettings({ connectionString: databaseURL, databaseSSLRootCert }),
     shouldCreateStorageSchema: true,
     waitForLock,

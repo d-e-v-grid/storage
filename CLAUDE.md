@@ -59,7 +59,7 @@ The Supabase Storage Engine is a scalable, lightweight object storage service th
 
 ### Database Schema
 - Single-tenant architecture for simplified deployment
-- Migrations managed in `/migrations/tenant` directory
+- Migrations managed in `/migrations` directory
 - Single database schema for all operations
 
 ### Development Setup
