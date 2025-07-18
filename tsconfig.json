@@ -1,28 +1,37 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Default",
   "compilerOptions": {
-    "paths": {
-        "@internal/*": ["./src/internal/*"],
-        "@storage/*": ["./src/storage/*"],
-    },
-    "downlevelIteration": true,
+    "moduleDetection": "force",
+    "declaration": true,
+    "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "esModuleInterop": true,
-    "preserveConstEnums": true,
-    "removeComments": true,
-    "rootDir": "src",
-    "moduleResolution": "node",
-    "module": "commonjs",
-    "target": "ES2021",
-    "outDir": "dist",
-    "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
+    "outDir": "./dist",
+    "incremental": true,
+    "skipLibCheck": true,
     "strict": true,
-    "skipLibCheck": true
-  },
-  "include": ["./src/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "parserOptions": {
-    "ecmaVersion": "2020", // Allows for the parsing of modern ECMAScript features
-    "sourceType": "module" // Allows for the use of imports
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": false,
+    "useDefineForClassFields": false,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ESNext",
+    "sourceMap": true
   }
 }
