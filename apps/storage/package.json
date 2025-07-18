@@ -109,5 +109,8 @@
     "tsx": "^4.16.0",
     "typescript": "5.2.2"
   },
-  "bin": "./dist/server.js"
+  "bin": "./dist/server.js",
+  "installConfig": {
+    "hoistingLimits": "workspaces"
+  }
 }
