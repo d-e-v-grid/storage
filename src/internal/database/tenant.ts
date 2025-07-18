@@ -1,5 +1,4 @@
 import { getConfig, JwksConfig, JwksConfigKeyOCT } from '../../config'
-import { DBMigration } from './migrations/types'
 import { lastLocalMigrationName } from '@internal/database/migrations/files'
 
 export interface Features {
@@ -41,28 +40,6 @@ export async function getServiceKeyUser(tenantId: string) {
  */
 export async function getServiceKey(tenantId: string): Promise<string> {
   return await singleTenantServiceKey.jwt
-}
-
-enum Capability {
-  LIST_V2 = 'list_V2',
-}
-
-/**
- * Get the capabilities for single tenant
- * @param tenantId (ignored in single tenant mode)
- */
-export async function getTenantCapabilities(tenantId: string) {
-  const capabilities: Record<Capability, boolean> = {
-    [Capability.LIST_V2]: false,
-  }
-
-  let latestMigrationName = dbMigrationFreezeAt || (await lastLocalMigrationName())
-
-  if (DBMigration[latestMigrationName] >= DBMigration['optimise-existing-functions']) {
-    capabilities[Capability.LIST_V2] = true
-  }
-
-  return capabilities
 }
 
 /**

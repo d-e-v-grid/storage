@@ -1,0 +1,135 @@
+ FAIL  src/test/object.test.ts (25.204 s)\"ref\":\"storage-single-tenant\"},\"version\":null,\"reqId\":\"req-1\",\"$version\":\"v1\"}","objectPath":"storage-single-tenant/bucket2/authenticated/move-orig-4.png","resources":["bucket2/authen  ● testing list objects › searching the bucket root folder
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      2361 |       },
+      2362 |     })
+    > 2363 |     expect(response.statusCode).toBe(200)
+           |                                 ^
+      2364 |     const responseJSON = JSON.parse(response.body) as { name: string }[]
+      2365 |     expect(responseJSON).toHaveLength(9)
+      2366 |     const names = responseJSON.map((ele) => ele.name)
+
+      at Object.<anonymous> (src/test/object.test.ts:2363:33)
+
+  ● testing list objects › searching a subfolder
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      2385 |       },
+      2386 |     })
+    > 2387 |     expect(response.statusCode).toBe(200)
+           |                                 ^
+      2388 |     const responseJSON = JSON.parse(response.body) as { name: string }[]
+      2389 |     expect(responseJSON).toHaveLength(2)
+      2390 |     const names = responseJSON.map((ele) => ele.name)
+
+      at Object.<anonymous> (src/test/object.test.ts:2387:33)
+
+  ● testing list objects › searching a non existent prefix
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      2406 |       },
+      2407 |     })
+    > 2408 |     expect(response.statusCode).toBe(200)
+           |                                 ^
+      2409 |     const responseJSON = JSON.parse(response.body)
+      2410 |     expect(responseJSON).toHaveLength(0)
+      2411 |   })
+
+      at Object.<anonymous> (src/test/object.test.ts:2408:33)
+
+  ● testing list objects › checking if limit works
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      2424 |       },
+      2425 |     })
+    > 2426 |     expect(response.statusCode).toBe(200)
+           |                                 ^
+      2427 |     const responseJSON = JSON.parse(response.body)
+      2428 |     expect(responseJSON).toHaveLength(2)
+      2429 |   })
+
+      at Object.<anonymous> (src/test/object.test.ts:2426:33)
+
+  ● testing list objects › listobjects: checking if RLS policies are respected
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      2442 |       },
+      2443 |     })
+    > 2444 |     expect(response.statusCode).toBe(200)
+           |                                 ^
+      2445 |     const responseJSON = JSON.parse(response.body)
+      2446 |     expect(responseJSON).toHaveLength(2)
+      2447 |   })
+
+      at Object.<anonymous> (src/test/object.test.ts:2444:33)
+
+  ● testing list objects › case insensitive search should work
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      2473 |       },
+      2474 |     })
+    > 2475 |     expect(response.statusCode).toBe(200)
+           |                                 ^
+      2476 |     const responseJSON = JSON.parse(response.body)
+      2477 |     expect(responseJSON).toHaveLength(2)
+      2478 |   })
+
+      at Object.<anonymous> (src/test/object.test.ts:2475:33)
+
+  ● testing list objects › test ascending search sorting
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      2493 |       },
+      2494 |     })
+    > 2495 |     expect(response.statusCode).toBe(200)
+           |                                 ^
+      2496 |     const responseJSON = JSON.parse(response.body)
+      2497 |     expect(responseJSON).toHaveLength(2)
+      2498 |     expect(responseJSON[0].name).toBe('sadcat-upload23.png')
+
+      at Object.<anonymous> (src/test/object.test.ts:2495:33)
+
+  ● testing list objects › test descending search sorting
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+      2515 |       },
+      2516 |     })
+    > 2517 |     expect(response.statusCode).toBe(200)
+           |                                 ^
+      2518 |     const responseJSON = JSON.parse(response.body)
+      2519 |     expect(responseJSON).toHaveLength(2)
+      2520 |     expect(responseJSON[0].name).toBe('sadcat-upload.png')
+
+      at Object.<anonymous> (src/test/object.test.ts:2517:33)

@@ -3,7 +3,6 @@ import { FastifyInstance } from 'fastify'
 import { IncomingMessage, Server, ServerResponse } from 'node:http'
 
 import build from '../app'
-import buildAdmin from '../admin-app'
 import { getConfig } from '../config'
 import { PubSub, TenantConnection } from '@internal/database'
 import { logger, logSchema } from '@internal/monitoring'
@@ -83,9 +82,6 @@ async function main() {
 
   // HTTP Server
   const app = await httpServer(shutdownSignal.signal)
-
-  // HTTP Admin Server
-  await httpAdminServer(app, shutdownSignal.signal)
 }
 
 /**
@@ -131,51 +127,4 @@ async function httpServer(signal: AbortSignal) {
     })
     throw err
   }
-}
-
-/**
- * Starts HTTP Admin endpoints
- * @param app
- * @param signal
- */
-async function httpAdminServer(
-  app: FastifyInstance<Server, IncomingMessage, ServerResponse>,
-  signal: AbortSignal
-) {
-  const { adminRequestIdHeader, adminPort, host } = getConfig()
-
-  const adminApp = buildAdmin({
-    logger,
-    disableRequestLogging: true,
-    requestIdHeader: adminRequestIdHeader,
-  })
-
-  const closePromise = createServerClosedPromise(adminApp.server, () => {
-    logSchema.info(logger, '[Admin Server] Exited', {
-      type: 'server',
-    })
-  })
-
-  signal.addEventListener(
-    'abort',
-    async () => {
-      logSchema.info(logger, '[Admin Server] Stopping', {
-        type: 'server',
-      })
-
-      await closePromise
-    },
-    { once: true }
-  )
-
-  try {
-    await adminApp.listen({ port: adminPort, host, signal })
-  } catch (err) {
-    logSchema.error(adminApp.log, 'Failed to start admin app', {
-      type: 'adminAppStartError',
-      error: err,
-    })
-    throw err
-  }
-  return adminApp
 }

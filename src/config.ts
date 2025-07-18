@@ -50,8 +50,6 @@ type StorageConfigType = {
   exposeDocs: boolean
   keepAliveTimeout: number
   headersTimeout: number
-  adminApiKeys: string
-  adminRequestIdHeader?: string
   encryptionKey: string
   uploadFileSizeLimit: number
   uploadFileSizeLimitStandard?: number
@@ -116,8 +114,6 @@ type StorageConfigType = {
   webhookQueueConcurrency?: number
   webhookMaxConnections: number
   webhookQueueMaxFreeSockets: number
-  adminDeleteQueueTeamSize?: number
-  adminDeleteConcurrency?: number
   imageTransformationEnabled: boolean
   imgProxyURL?: string
   imgProxyRequestTimeout: number
@@ -130,7 +126,6 @@ type StorageConfigType = {
     }
   }
   postgrestForwardHeaders?: string
-  adminPort: number
   port: number
   host: string
   rateLimiterEnabled: boolean
@@ -250,7 +245,6 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     headersTimeout: parseIntSafe(getOptionalConfigFromEnv('SERVER_HEADERS_TIMEOUT'), 65, 0, 300),
     host: getOptionalConfigFromEnv('SERVER_HOST', 'HOST') || '0.0.0.0',
     port: Number(getOptionalConfigFromEnv('SERVER_PORT', 'PORT')) || 5000,
-    adminPort: Number(getOptionalConfigFromEnv('SERVER_ADMIN_PORT', 'ADMIN_PORT')) || 5001,
 
     // Request
     requestAllowXForwardedPrefix:
@@ -269,12 +263,6 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     ],
     responseSMaxAge: parseIntSafe(getOptionalConfigFromEnv('RESPONSE_S_MAXAGE'), 0, 0),
 
-    // Admin
-    adminApiKeys: getOptionalConfigFromEnv('SERVER_ADMIN_API_KEYS', 'ADMIN_API_KEYS') || '',
-    adminRequestIdHeader: getOptionalConfigFromEnv(
-      'REQUEST_TRACE_HEADER',
-      'REQUEST_ADMIN_TRACE_HEADER'
-    ),
 
     encryptionKey: (() => {
       const key = getOptionalConfigFromEnv('AUTH_ENCRYPTION_KEY', 'ENCRYPTION_KEY')
@@ -470,18 +458,6 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
       20,
       1,
       1000
-    ),
-    adminDeleteQueueTeamSize: parseIntSafe(
-      getOptionalConfigFromEnv('QUEUE_ADMIN_DELETE_TEAM_SIZE'),
-      50,
-      1,
-      1000
-    ),
-    adminDeleteConcurrency: parseIntSafe(
-      getOptionalConfigFromEnv('QUEUE_ADMIN_DELETE_CONCURRENCY'),
-      5,
-      1,
-      100
     ),
 
     // Image Transformation
